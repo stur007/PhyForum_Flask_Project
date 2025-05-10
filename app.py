@@ -1,13 +1,15 @@
-from flask import Flask, request, render_template, redirect, flash, session,url_for
+from flask import Flask, request, render_template, redirect, flash, session
 from werkzeug.security import generate_password_hash, check_password_hash
 
 import mysql.connector
 from markdown_it import MarkdownIt
+import os
+from config import Config
 
 md = MarkdownIt()
 
 app = Flask(__name__)
-app.secret_key = 'Phyforum@123'
+
 
 @app.route("/")
 def index():
@@ -17,12 +19,14 @@ def index():
 def about():
     return "<h1>About Us</h1><p>This page is under construction.</p>"
 
-db = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="Phyforum@123",
-    database="PhyForum"
-)
+def get_db_connection():
+    return mysql.connector.connect(
+        host=Config.DB_HOST,
+        user=Config.DB_USER,
+        password=Config.DB_PASSWORD,
+        database=Config.DB_NAME
+    )
+db = get_db_connection()
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -220,4 +224,5 @@ def profile():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
