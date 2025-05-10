@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block content %}
+<h2>{{ post.title }}</h2>
+<p><strong>By:</strong> {{ post.nickname }} | <strong>Posted at:</strong> {{ post.created_at }} | 
+    {% if post.updated_at != post.created_at %}
+    <strong>Updated at:</strong> {{ post.updated_at }}
+    {% endif %}
+</p>
+<hr>
+<div class="post-content">
+    {{ post.content_html|safe }}
+</div>
+<form action="/post/{{post.id}}/delete" method="POST">
+    <a href="/post/{{post.id}}/edit">Edit</a>
+    <button type="submit" class="btn btn-danger" onclick="return confirm('Congifure deletion')">Delete</button>
+</form>
+
+<hr>
+<h3>Comments</h3>
+{% if comments %}
+    {% for comment in comments %}
+        <div class="panel panel-default">
+            <div class="panel-body">
+                <p>{{ comment.content }}</p>
+                <small><strong>{{ comment.nickname }}</strong> commented at {{ comment.created_at }}
+                {% if comment.updated_at != comment.created_at %}
+                updated at {{ comment.updated_at }}
+                {% endif %}
+                </small>
+            </div>
+        </div>
+        <form action="/comment/{{comment.id}}/delete" method="POST">
+    <a href="/comment/{{comment.id}}/edit">Edit</a>
+    <button type="submit" class="btn btn-danger" onclick="return confirm('Congifure deletion')">Delete</button>
+</form>
+    {% endfor %}
+{% endif %}
+
+{% if session['user_id'] %}
+<form method="POST">
+    <div class="form-group">
+        <label for="comment_content">Add a comment:</label>
+        <textarea class="form-control" name="comment_content" rows="3" required></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Post Comment</button>
+</form>
+{% else %}
+<p><a href="/login">Log in</a> to comment.</p>
+{% endif %}
+
+<a href="/" class="btn btn-default">Back to Home</a>
+{% endblock %}

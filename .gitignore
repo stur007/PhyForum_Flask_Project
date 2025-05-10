@@ -1,0 +1,6 @@
+.venv/
+.vscode/
+password.txt
+.env
+__pycache__/
+tests/
