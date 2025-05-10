@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}All Posts{% endblock %}
+{% block content %}
+<h2>All Posts</h2>
+<li><a href="/post/new">Add Your New Post</a></li>
+<ul class="list-group">
+  {% for post in posts %}
+    <li class="list-group-item">
+      <a href="/post/{{ post.id }}"><strong>{{ post.title }}</strong></a>
+      <br>
+      by {{ post.nickname }} on {{ post.created_at }}
+    </li>
+  {% endfor %}
+</ul>
+{% endblock %}
