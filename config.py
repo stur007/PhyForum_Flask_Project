@@ -1,10 +1,15 @@
-import os
 from dotenv import load_dotenv
-load_dotenv()
+import os
+
+load_dotenv()  
 
 class Config:
-    SECRET_KEY = os.environ.get("SECRET_KEY", "dev_secret_key")
-    DB_HOST = os.environ.get("DB_HOST", "localhost")
-    DB_USER = os.environ.get("DB_USER", "root")
-    DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
-    DB_NAME = os.environ.get("DB_NAME", "PhyForum")
+    SECRET_KEY = os.getenv("SECRET_KEY")
+    DB_HOST = os.getenv("DB_HOST")
+    DB_PORT = int(os.getenv("DB_PORT"))
+    DB_NAME = os.getenv("DB_NAME")
+    DB_USER = os.getenv("DB_USER")
+    DB_PASSWORD = os.getenv("DB_PASSWORD")
+    DB_TIMEOUT = int(os.getenv("DB_TIMEOUT"))
+
+
