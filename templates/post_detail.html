@@ -15,7 +15,7 @@
 </div>
 <form action="/post/{{post.id}}/delete" method="POST">
     <a href="/post/{{post.id}}/edit">Edit</a>
-    <button type="submit" onclick="return confirm('Congifure deletion')">Delete</button>
+    <button type="submit" class="btn btn-danger" onclick="return confirm('Congifure deletion')">Delete</button>
 </form>
 
 <hr>
@@ -34,7 +34,7 @@
         </div>
         <form action="/comment/{{comment.id}}/delete" method="POST">
     <a href="/comment/{{comment.id}}/edit">Edit</a>
-    <button type="submit" onclick="return confirm('Congifure deletion')">Delete</button>
+    <button type="submit" class="btn btn-danger" onclick="return confirm('Congifure deletion')">Delete</button>
 </form>
     {% endfor %}
 {% endif %}

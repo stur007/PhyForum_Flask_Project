@@ -3,12 +3,23 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 import pymysql
 from markdown_it import MarkdownIt
-import os
 from config import Config
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer
 
 md = MarkdownIt()
 app = Flask(__name__)
 app.secret_key = Config.SECRET_KEY
+
+app.config['MAIL_SERVER'] = Config.MAIL_SERVER
+app.config['MAIL_PORT'] = Config.MAIL_PORT
+app.config['MAIL_USE_SSL'] = Config.MAIL_USE_SSL
+app.config['MAIL_USERNAME'] = Config.MAIL_USERNAME
+app.config['MAIL_PASSWORD'] = Config.MAIL_PASSWORD
+app.config['MAIL_DEFAULT_SENDER'] = Config.MAIL_DEFAULT_SENDER
+
+mail = Mail(app)
+s = URLSafeTimedSerializer(app.secret_key)
 
 @app.route("/")
 def index():
@@ -42,7 +53,6 @@ def register():
         email = request.form['email']
         nickname = request.form['nickname']
         password = request.form['password']
-        role = 'user'
         contact_info = request.form['contact_info']
 
         with get_db_connection() as db:
@@ -52,16 +62,50 @@ def register():
                     flash("This email is already registered.")
                     return redirect('/register')
 
-                hashed_password = generate_password_hash(password)
-                cursor.execute("""
-                    INSERT INTO users (email, nickname, password_hash, contact_info)
-                    VALUES (%s, %s, %s, %s)
-                """, (email, nickname, hashed_password, contact_info))
-                db.commit()
-                flash("Registration successful!")
-                return redirect('/')
+        password_hash = generate_password_hash(password)
+        token = s.dumps({
+            'email': email,
+            'nickname': nickname,
+            'password_hash': password_hash,
+            'contact_info': contact_info
+        }, salt='email-confirm')
+
+        BASE_URL = Config.BASE_URL
+        confirm_url = f"{BASE_URL}/confirm/{token}"
+
+        msg = Message('Confirm your registration', recipients=[email])
+        msg.body = f'Hi, please click the link to confirm your registration:\n{confirm_url}'
+
+        mail.send(msg)
+        return render_template('check_email.html')
 
     return render_template('register.html')
+
+@app.route('/confirm/<token>')
+def confirm_email(token):
+    try:
+        data = s.loads(token, salt='email-confirm', max_age=3600)
+    except:
+        return "The confirmation link is invalid or has expired."
+
+    email = data['email']
+    nickname = data['nickname']
+    password_hash = data['password_hash']
+    contact_info = data['contact_info']
+
+    with get_db_connection() as db:
+        with db.cursor() as cursor:
+            cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+            if cursor.fetchone():
+                return "This email has already been confirmed."
+
+            cursor.execute("""
+                INSERT INTO users (email, nickname, password_hash, contact_info)
+                VALUES (%s, %s, %s, %s)
+            """, (email, nickname, password_hash, contact_info))
+            db.commit()
+
+    return redirect('/login')
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -87,6 +131,23 @@ def logout():
     session.clear()
     flash("You have been logged out.")
     return redirect("/")
+
+@app.route('/delete_account', methods=['POST'])
+def delete_account():
+    user_id = session.get('user_id')
+    if not user_id:
+        flash("You must be logged in to delete your account.")
+        return redirect('/login')
+
+    with get_db_connection() as db:
+        with db.cursor() as cursor:
+            cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+            db.commit()
+
+    session.clear()
+    flash("Your account has been deleted.")
+    return redirect('/')
+
 
 @app.route('/post/new', methods=['GET', 'POST'])
 def create_post():
@@ -163,6 +224,15 @@ def post_detail(post_id):
 def edit_post(post_id):
     with get_db_connection() as db:
         with db.cursor() as cursor:
+            cursor.execute("SELECT * FROM posts WHERE id=%s", (post_id,))
+            post = cursor.fetchone()
+
+            if not post:
+                return "Post not found", 404
+
+            if post['user_id'] != session.get('user_id') and not session.get('is_admin', False):
+                return "Permission denied", 403
+            
             if request.method == 'POST':
                 title = request.form['title']
                 content = request.form['content']
@@ -181,6 +251,15 @@ def edit_post(post_id):
 def delete_post(post_id):
     with get_db_connection() as db:
         with db.cursor() as cursor:
+            cursor.execute("SELECT * FROM posts WHERE id=%s", (post_id,))
+            post = cursor.fetchone()
+
+            if not post:
+                return "Post not found", 404
+
+            if post['user_id'] != session.get('user_id') and not session.get('is_admin', False):
+                return "Permission denied", 403
+            
             cursor.execute("DELETE FROM posts WHERE id=%s", (post_id,))
             db.commit()
     return redirect('/posts')
@@ -189,6 +268,15 @@ def delete_post(post_id):
 def edit_comment(comment_id):
     with get_db_connection() as db:
         with db.cursor() as cursor:
+            cursor.execute("SELECT * FROM posts WHERE id=%s", (comment_id,))
+            post = cursor.fetchone()
+
+            if not post:
+                return "Post not found", 404
+
+            if post['user_id'] != session.get('user_id') and not session.get('is_admin', False):
+                return "Permission denied", 403
+            
             cursor.execute("SELECT * FROM comments WHERE id=%s", (comment_id,))
             comment = cursor.fetchone()
 
@@ -207,6 +295,15 @@ def edit_comment(comment_id):
 def delete_comment(comment_id):
     with get_db_connection() as db:
         with db.cursor() as cursor:
+            cursor.execute("SELECT * FROM posts WHERE id=%s", (comment_id,))
+            post = cursor.fetchone()
+
+            if not post:
+                return "Post not found", 404
+
+            if post['user_id'] != session.get('user_id') and not session.get('is_admin', False):
+                return "Permission denied", 403
+            
             cursor.execute("SELECT * FROM comments WHERE id=%s", (comment_id,))
             comment = cursor.fetchone()
             if comment:
