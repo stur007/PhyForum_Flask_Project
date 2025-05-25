@@ -4,3 +4,4 @@ password.txt
 .env
 __pycache__/
 tests/
+PhyForum.session.sql

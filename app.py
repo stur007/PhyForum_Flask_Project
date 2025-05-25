@@ -121,10 +121,15 @@ def login():
                     session["nickname"] = user["nickname"]
                     session["role"] = user["role"]
                     flash("Login successful!")
-                    return redirect("/")
+
+                    if user["role"] == "admin":
+                        return redirect("/admin")
+                    else:
+                        return redirect("/")
                 else:
                     flash("Invalid email or password.")
     return render_template("login.html")
+
 
 @app.route("/logout")
 def logout():
@@ -148,6 +153,104 @@ def delete_account():
     flash("Your account has been deleted.")
     return redirect('/')
 
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form['email']
+        with get_db_connection() as db:
+            with db.cursor() as cursor:
+                cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+                user = cursor.fetchone()
+
+                if user:
+                    token = s.dumps(email, salt='reset-password')
+                    reset_url = f"{Config.BASE_URL}/reset-password/{token}"
+
+                    msg = Message("Password Reset Request", recipients=[email])
+                    msg.body = f"To reset your password, click the link below:\n{reset_url}"
+                    mail.send(msg)
+        
+            return redirect('/password-reset-sent')
+        return redirect('/login')
+
+    return render_template('forgot_password.html')
+
+@app.route('/password-reset-sent')
+def password_reset_sent():
+    return render_template('password_reset_sent.html')
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    try:
+        email = s.loads(token, salt='reset-password', max_age=3600)
+    except Exception:
+        flash("The password reset link is invalid or has expired.")
+        return redirect('/forgot-password')
+
+    if request.method == 'POST':
+        new_password = request.form['password']
+        password_hash = generate_password_hash(new_password)
+        
+        with get_db_connection() as db:
+            with db.cursor() as cursor:
+                cursor.execute("UPDATE users SET password_hash=%s WHERE email=%s", (password_hash, email))
+                db.commit()
+        
+        flash("Your password has been reset successfully. Please log in.")
+        return redirect('/login')
+
+    return render_template('reset_password.html')
+
+def admin_required(view_func):
+    def wrapper(*args, **kwargs):
+        if 'role' not in session or session['role'] != 'admin':
+            return redirect('/login')
+        return view_func(*args, **kwargs)
+    wrapper.__name__ = view_func.__name__
+    return wrapper
+
+@app.route('/admin')
+@admin_required
+def admin_dashboard():
+    with get_db_connection() as db:
+        with db.cursor() as cursor:
+            cursor.execute("SELECT * FROM users")
+            users = cursor.fetchall()
+            cursor.execute("SELECT * FROM posts")
+            posts = cursor.fetchall()
+            cursor.execute("SELECT * FROM comments")
+            comments = cursor.fetchall()
+    return render_template('admin/dashboard.html', users=users, posts=posts, comments=comments)
+
+@app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
+@admin_required
+def delete_user(user_id):
+    with get_db_connection() as db:
+        with db.cursor() as cursor:
+            cursor.execute("DELETE FROM comments WHERE user_id = %s", (user_id,))
+            cursor.execute("DELETE FROM posts WHERE user_id = %s", (user_id,))
+            cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+            db.commit()
+    return redirect('/admin')
+
+@app.route('/admin/delete_post/<int:post_id>', methods=['POST'])
+@admin_required
+def delete_post_admin(post_id):
+    with get_db_connection() as db:
+        with db.cursor() as cursor:
+            cursor.execute("DELETE FROM comments WHERE post_id = %s", (post_id,))
+            cursor.execute("DELETE FROM posts WHERE id = %s", (post_id,))
+            db.commit()
+    return redirect('/admin')
+
+@app.route('/admin/delete_comment/<int:comment_id>', methods=['POST'])
+@admin_required
+def delete_comment_admin(comment_id):
+    with get_db_connection() as db:
+        with db.cursor() as cursor:
+            cursor.execute("DELETE FROM comments WHERE id = %s", (comment_id,))
+            db.commit()
+    return redirect('/admin')
 
 @app.route('/post/new', methods=['GET', 'POST'])
 def create_post():

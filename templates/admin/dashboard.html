@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<h2>Admin Dashboard</h2>
+
+<h3>Users</h3>
+<table class="table">
+  <tr><th>User ID</th></th><th>Email</th><th>Nickname</th><th>Action</th></tr>
+  {% for user in users %}
+  <tr>
+    <td>{{ user.id}}</td>
+    <td>{{ user.email }}</td>
+    <td>{{ user.nickname }}</td>
+    <td>
+      {% if user.role != 'admin' %}
+      <form method="post" action="/admin/delete_user/{{ user.id }}" onsubmit="return confirm('Delete this user?')">
+      <button class="btn btn-danger btn-sm">Delete</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h3>Posts</h3>
+<table class="table">
+  <tr><th>ID</th><th>User</th><th>Title</th><th>Content</th><th>Action</th></tr>
+  {% for post in posts %}
+  <tr>
+    <td>{{ post.id }}</td>
+    <td>{{ post.user_id }}</td>
+    <td>{{ post.title }}</td>
+    <td>{{ post.content }}</td>
+    <td>
+      <form method="post" action="/admin/delete_post/{{ post.id }}" onsubmit="return confirm('Delete this post?')">
+        <button class="btn btn-danger btn-sm">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h3>Comments</h3>
+<table class="table">
+  <tr><th>ID</th><th>User</th><th>Post ID</th><th>Content</th><th>Action</th></tr>
+  {% for comment in comments %}
+  <tr>
+    <td>{{ comment.id }}</td>
+    <td>{{ comment.user_id }}</td>
+    <td>{{ comment.post_id }}</td>
+    <td>{{ comment.content }}</td>
+    <td>
+      <form method="post" action="/admin/delete_comment/{{ comment.id }}" onsubmit="return confirm('Delete this comment?')">
+        <button class="btn btn-danger btn-sm">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% endblock %}
