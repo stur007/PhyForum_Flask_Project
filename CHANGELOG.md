@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 2025-05-25
+
+### Added
+- Reset password via email verification
+- Administrator control UI
+
+### Fixed
+- Flash message display style
+
 ---
 
 ## [0.1.0] - 2025-05-18
